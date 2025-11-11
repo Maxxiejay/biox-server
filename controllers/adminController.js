@@ -326,6 +326,7 @@ const changeUserRole = async (req, res) => {
     if (!allowedRoles.includes(newRole)) {
       return res.status(400).json({ error: `Invalid role. Allowed values: ${allowedRoles.join(', ')}` });
     }
+    
 
     // Find user and update role using a direct update then reload fresh data
     const user = await User.findByPk(userId);

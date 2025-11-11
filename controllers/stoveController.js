@@ -103,6 +103,60 @@ const receiveStoveData = async (req, res) => {
   }
 };
 
+const receiveStoveDataOpen = async (req, res) => {
+  try {
+    const { stoveId, date, cookingEvents, totalMinutes, fuelUsedKg } = req.body;
+
+    // Validate input
+    if (!stoveId || !date || cookingEvents === undefined || totalMinutes === undefined || fuelUsedKg === undefined) {
+      return res.status(400).json({ error: 'All fields are required: stoveId, date, cookingEvents, totalMinutes, fuelUsedKg' });
+    }
+
+    // Validate numeric values
+    if (typeof cookingEvents !== 'number' || typeof totalMinutes !== 'number' || typeof fuelUsedKg !== 'number') {
+      return res.status(400).json({ error: 'cookingEvents, totalMinutes, and fuelUsedKg must be numbers' });
+    }
+
+    if (cookingEvents < 0 || totalMinutes < 0 || fuelUsedKg < 0) {
+      return res.status(400).json({ error: 'Numeric values cannot be negative' });
+    }
+
+    // Validate date format
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    const Stove = require('../models/Stove');
+    const StoveUsage = require('../models/StoveUsage');
+
+    // Find the stove by stoveId instead of using middleware authentication
+    const stove = await Stove.findOne({ where: { stove_id: stoveId } });
+
+    if (!stove) {
+      return res.status(404).json({ error: 'Stove not found' });
+    }
+
+    // Always create a new record for logging purposes
+    // Timestamps are automatically tracked by the model (createdAt/updatedAt)
+    const usage = await StoveUsage.create({
+      stove_id: stoveId,
+      date: parsedDate,
+      cooking_events: cookingEvents,
+      total_minutes: totalMinutes,
+      fuel_used_kg: fuelUsedKg
+    });
+
+    res.status(201).json({
+      message: 'Usage data saved successfully',
+      usage: usage
+    });
+  } catch (error) {
+    console.error('Receive stove data error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // Get user's stoves
 const getUserStoves = async (req, res) => {
   try {
@@ -122,6 +176,7 @@ const getUserStoves = async (req, res) => {
 module.exports = {
   pairStove,
   receiveStoveData,
+  receiveStoveDataOpen,
   getUserStoves,
   generatePairingCode,
   generateApiKey
