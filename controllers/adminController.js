@@ -321,16 +321,26 @@ const changeUserRole = async (req, res) => {
       return res.status(400).json({ error: 'User ID and new role are required' });
     }
 
-    // Find user and update role
+    // Validate role value against allowed enum values
+    const allowedRoles = ['user', 'admin'];
+    if (!allowedRoles.includes(newRole)) {
+      return res.status(400).json({ error: `Invalid role. Allowed values: ${allowedRoles.join(', ')}` });
+    }
+
+    // Find user and update role using a direct update then reload fresh data
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.role = newRole;
-    await user.save();
+    await user.update({ role: newRole });
 
-    res.json({ message: 'User role updated successfully', user });
+    // Reload to ensure we return the persisted values
+    const freshUser = await User.findByPk(userId, {
+      attributes: ['id', 'name', 'email', 'role', 'created_at']
+    });
+
+    res.json({ message: 'User role updated successfully', user: freshUser });
   } catch (error) {
     console.error('Change user role error:', error);
     res.status(500).json({ error: 'Internal server error' });
