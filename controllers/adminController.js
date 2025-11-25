@@ -238,17 +238,18 @@ const getStats = async (req, res) => {
     const dd = String(today.getDate()).padStart(2, '0');
     const todayStr = `${yyyy}-${mm}-${dd}`;
 
-    // Total fuel used today - aggregate all logs for today
-    const todayFuelLogs = await StoveUsage.findAll({
-      where: { date: todayStr },
+    // Total fuel, events, and cooking time across all usage records
+    const totalsAgg = await StoveUsage.findAll({
       attributes: [
         [fn('SUM', col('fuel_used_kg')), 'total_fuel'],
-        [fn('SUM', col('cooking_events')), 'total_events']
+        [fn('SUM', col('cooking_events')), 'total_events'],
+        [fn('SUM', col('total_minutes')), 'total_minutes']
       ]
     });
     
-    const totalFuelToday = parseFloat(todayFuelLogs[0]?.getDataValue('total_fuel') || 0);
-    const totalCookingEventsToday = parseInt(todayFuelLogs[0]?.getDataValue('total_events') || 0, 10);
+    const totalFuelUsed = parseFloat(totalsAgg[0]?.getDataValue('total_fuel') || 0);
+    const totalCookingEvents = parseInt(totalsAgg[0]?.getDataValue('total_events') || 0, 10);
+    const totalCookingTime = parseInt(totalsAgg[0]?.getDataValue('total_minutes') || 0, 10);
 
     // 7-day bar chart data for total fuel consumption across all users
     // Build date list from 6 days ago up to today
@@ -300,8 +301,9 @@ const getStats = async (req, res) => {
     res.json({
       totalUsers,
       activeStoves,
-      totalFuelToday,
-      totalCookingEventsToday,
+      totalFuelUsed,
+      totalCookingEvents,
+      totalCookingTime,
       fuelChartData,
       dateRange: dayNames
     });
